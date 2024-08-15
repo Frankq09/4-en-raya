@@ -1,0 +1,211 @@
+#include <iostream>
+#include <vector>
+#include <string>
+#include <iomanip>
+#include <algorithm> // Necesario para std::sort
+
+using namespace std;
+
+// Estructura que representa a un jugador con su nombre y puntaje
+struct Jugador {
+    string nombre;
+    int puntaje = 0;
+};
+
+// Constantes que definen las dimensiones del tablero y los caracteres utilizados para representar las fichas y las celdas vacías
+const int FILAS = 6, COLUMNAS = 7;
+const char VACIO = '.', FICHA_JUGADOR1 = 'X', FICHA_JUGADOR2 = 'O';
+
+// Variables globales
+vector<Jugador> tablaPuntajes;  // Vector que almacena los puntajes de los jugadores
+string nombreJugador1, nombreJugador2;  // Nombres de los jugadores
+char fichaActual;  // Ficha del jugador que está jugando actualmente
+
+// Declaración de funciones que serán utilizadas en el código
+void mostrarMenu(), jugar(), mostrarPuntajes(), cambiarJugador();
+void actualizarPuntajes(const string& nombre, int puntaje);
+void imprimirTablero(const vector<vector<char>>& tablero);
+bool colocarFicha(vector<vector<char>>& tablero, int columna, char ficha);
+bool verificarGanador(const vector<vector<char>>& tablero, char ficha);
+bool esTableroLleno(const vector<vector<char>>& tablero);
+int obtenerColumnaValida();
+
+int main() {
+    int opcion;
+    do {
+        // Muestra el menú principal y espera la entrada del usuario
+        mostrarMenu();
+        cin >> opcion;
+
+        // Ejecuta la opción seleccionada por el usuario
+        switch(opcion) {
+            case 1: jugar(); break;  // Inicia el juego
+            case 2: mostrarPuntajes(); break;  // Muestra la tabla de puntajes
+            case 3: 
+                cout << "Creadores: Frank Quinatoa y Matthew Redín" << endl;
+                cout << "Curso: GR9DCC " << endl;
+                break;  // Muestra los créditos
+            case 4: 
+                cout << "Saliendo del juego...\n"; 
+                break;  // Sale del programa
+            default: 
+                cout << "Opción no válida. Intente de nuevo.\n";
+        }
+    } while (opcion != 4);  // Repite el ciclo hasta que el usuario elija salir
+    return 0;
+}
+
+void mostrarMenu() {
+    // Muestra el menú principal del juego
+    cout << "        4 EN RAYA                \n"
+         << "---- Menú Principal ----\n"
+         << "1. Jugar\n2. Puntajes\n3. Créditos\n4. Salir\n"
+         << "Seleccione una opción: ";
+}
+
+void jugar() {
+    // Inicializa el tablero vacío
+    vector<vector<char>> tablero(FILAS, vector<char>(COLUMNAS, VACIO));
+    int columna;
+    bool ganador = false;
+
+    // Pide los nombres de los jugadores
+    cin.ignore();
+    cout << "Nombre Jugador 1: "; getline(cin, nombreJugador1);
+    cout << "Nombre Jugador 2: "; getline(cin, nombreJugador2);
+
+    // El primer jugador comienza con la ficha X
+    fichaActual = FICHA_JUGADOR1;
+    string jugadorActual = nombreJugador1;
+
+    // Ciclo principal del juego que continúa hasta que alguien gane o se llene el tablero
+    while (!esTableroLleno(tablero) && !ganador) {
+        imprimirTablero(tablero);  // Muestra el tablero actual
+        cout << "Turno de " << jugadorActual << ". Columna (0-6): ";
+        columna = obtenerColumnaValida();  // Pide al jugador que elija una columna
+
+        if (colocarFicha(tablero, columna, fichaActual)) {  // Intenta colocar la ficha en la columna seleccionada
+            if (verificarGanador(tablero, fichaActual)) {  // Verifica si la jugada actual gana el juego
+                imprimirTablero(tablero);  // Muestra el tablero final
+                cout << "¡Felicidades! " << jugadorActual << " ha ganado!\n";
+                ganador = true;
+                actualizarPuntajes(jugadorActual, 100);  // Actualiza el puntaje del jugador ganador
+            } else {
+                cambiarJugador();  // Cambia al siguiente jugador
+                jugadorActual = (fichaActual == FICHA_JUGADOR1) ? nombreJugador1 : nombreJugador2;
+            }
+        } else {
+            cout << "Columna no válida o llena. Inténtalo de nuevo.\n";  // Indica que la columna elegida no es válida
+        }
+    }
+
+    // Si nadie gana, el juego termina en empate
+    if (!ganador) {
+        imprimirTablero(tablero);
+        cout << "El juego terminó en empate.\n";
+        actualizarPuntajes(nombreJugador1, 0);  // Ambos jugadores obtienen 0 puntos
+        actualizarPuntajes(nombreJugador2, 0);
+    }
+}
+
+void mostrarPuntajes() {
+    // Ordena la tabla de puntajes en orden descendente
+    sort(tablaPuntajes.begin(), tablaPuntajes.end(), [](const Jugador& a, const Jugador& b) {
+        return b.puntaje < a.puntaje; // Comparador personalizado para ordenar de mayor a menor
+    });
+
+    // Muestra la tabla de puntajes
+    cout << "---- Tabla de Puntajes ----\n";
+    if (tablaPuntajes.empty()) {
+        cout << "No hay puntajes disponibles.\n";
+        return;
+    }
+    cout << left << setw(20) << "Nombre" << setw(10) << "Puntaje\n"
+         << "-------------------------------\n";
+    for (const auto& jugador : tablaPuntajes)
+        cout << left << setw(20) << jugador.nombre << setw(10) << jugador.puntaje << endl;
+}
+
+void actualizarPuntajes(const string& nombre, int puntaje) {
+    // Busca si el jugador ya existe en la tabla de puntajes
+    for (auto& jugador : tablaPuntajes) {
+        if (jugador.nombre == nombre) {
+            jugador.puntaje += puntaje;  // Si existe, actualiza su puntaje
+            return;
+        }
+    }
+    tablaPuntajes.push_back({nombre, puntaje});  // Si no existe, lo agrega a la tabla
+}
+
+void imprimirTablero(const vector<vector<char>>& tablero) {
+    // Imprime el tablero de juego en su estado actual
+    cout << " 0 1 2 3 4 5 6\n";
+    for (const auto& fila : tablero) {
+        for (char celda : fila) cout << ' ' << celda << ' ';
+        cout << endl;
+    }
+    cout << "---------------\n";
+}
+
+bool colocarFicha(vector<vector<char>>& tablero, int columna, char ficha) {
+    // Coloca la ficha en la columna seleccionada, si es válida
+    if (columna < 0 || columna >= COLUMNAS) return false;
+    for (int i = FILAS - 1; i >= 0; --i) {
+        if (tablero[i][columna] == VACIO) {
+            tablero[i][columna] = ficha;  // Coloca la ficha en la posición más baja disponible
+            return true;
+        }
+    }
+    return false;  // Retorna false si la columna está llena
+}
+
+bool verificarGanador(const vector<vector<char>>& tablero, char ficha) {
+    // Verifica si hay cuatro fichas consecutivas en filas, columnas o diagonales
+    for (int i = 0; i < FILAS; ++i) {
+        for (int j = 0; j < COLUMNAS - 3; ++j)
+            if (tablero[i][j] == ficha && tablero[i][j+1] == ficha && 
+                tablero[i][j+2] == ficha && tablero[i][j+3] == ficha)
+                return true;  // Verifica filas
+    }
+    for (int j = 0; j < COLUMNAS; ++j) {
+        for (int i = 0; i < FILAS - 3; ++i)
+            if (tablero[i][j] == ficha && tablero[i+1][j] == ficha && 
+                tablero[i+2][j] == ficha && tablero[i+3][j] == ficha)
+                return true;  // Verifica columnas
+    }
+    for (int i = 0; i < FILAS - 3; ++i) {
+        for (int j = 0; j < COLUMNAS - 3; ++j)
+            if (tablero[i][j] == ficha && tablero[i+1][j+1] == ficha && 
+                tablero[i+2][j+2] == ficha && tablero[i+3][j+3] == ficha)
+                return true;  // Verifica diagonales descendentes
+    }
+    for (int i = 0; i < FILAS - 3; ++i) {
+        for (int j = 3; j < COLUMNAS; ++j)
+            if (tablero[i][j] == ficha && tablero[i+1][j-1] == ficha && 
+                tablero[i+2][j-2] == ficha && tablero[i+3][j-3] == ficha)
+                return true;  // Verifica diagonales ascendentes
+    }
+    return false;  // Retorna false si no se encontró un ganador
+}
+
+bool esTableroLleno(const vector<vector<char>>& tablero) {
+    // Verifica si el tablero está completamente lleno
+    for (const auto& fila : tablero)
+        for (char celda : fila)
+            if (celda == VACIO) return false;  // Si hay alguna celda vacía, retorna false
+    return true;  // Si todas las celdas están llenas, retorna true
+}
+
+int obtenerColumnaValida() {
+    int columna;
+    while (true) {
+        cin >> columna;
+        if (columna >= 0 && columna < COLUMNAS) return columna;  // Retorna la columna si es válida
+        cout << "Columna inválida. Ingrese un número entre 0 y 6: ";
+    }
+}
+
+void cambiarJugador() {
+    // Cambia la ficha del jugador actual
+    fichaActual = (fichaActual == FICHA_JUGADOR1) ? FICHA_JUGADOR2 : FICHA_JUGADOR1;
+}
